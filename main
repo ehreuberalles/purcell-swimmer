@@ -1,0 +1,284 @@
+/* Sweep
+ by BARRAGAN <http://barraganstudio.com>
+ This example code is in the public domain.
+
+ modified 8 Nov 2013
+ by Scott Fitzgerald
+ http://www.arduino.cc/en/Tutorial/Sweep
+*/
+
+#include <Servo.h>
+
+Servo srv1;  // create servo object to control a servo
+Servo srv2;
+// twelve servo objects can be created on most boards
+
+int pos = 0;    // variable to store the servo position
+int del = 15;
+int maxpos = 120;
+int minpos = 60;
+int mode = 2;
+int idle_pos_fish = 90;
+int running_number = 0;
+bool hard_coded_control = false;
+
+int mode_switch_speed_control = 6;
+int mode_switch_pin_purcell = 0;
+int mode_switch_pin_fish = 1;
+int mode_switch_purcell_reverse = 2;
+int mode_switch_fish_reverse = 3;
+
+
+void setup() {
+  srv1.attach(8);  // attaches the servo on pin 9 to the servo object
+  srv2.attach(9);
+  Serial.begin(9600);
+  //pinMode(LED_BUILTIN, OUTPUT);
+  //pinMode(,INPUT_PULLUP); ?
+
+  pinMode(4, OUTPUT); //blue led
+  pinMode(5, OUTPUT); //green led
+  pinMode(6, OUTPUT); //red led
+
+  digitalWrite(4, HIGH);
+}
+
+void loop() {
+  if (hard_coded_control){
+    hard_coded_control_switch();
+  } else {
+    read_mode_from_switch();
+    Serial.print("Mode: ");
+    Serial.println(mode);
+  }
+  reset_pos();
+  color_change();
+  
+  switch (mode){
+  case 0:
+    mode_0(); //for low Re environment
+   Serial.println("End Loop");
+   Serial.println("");
+  break;
+  case 1:
+    mode_1(); //for high Re environment
+   Serial.println("End Loop");
+   Serial.println("");
+  break;
+  case 2:
+   zero_mode();
+   Serial.println("End Loop");
+   Serial.println("");
+  break;
+  case 3:
+    mode_0_REVERSE(); //for low Re environment , REVERSE
+   Serial.println("End Loop");
+   Serial.println("");
+  break;
+  case 4:
+    mode_1_REVERSE(); //for high Re environment , REVERSE
+   Serial.println("End Loop");
+   Serial.println("");
+  break;
+  }
+}
+
+void mode_0(){ //purcell
+  speed_control();
+  for (pos = minpos; pos <= maxpos; pos += 1) { // goes from 0 degrees to 180 degrees
+      // in steps of 1 degree
+      srv1.write(pos);              // tell servo to go to position in variable 'pos'
+      delay_and_check(del);                       // waits 15ms for the servo to reach the position
+    }
+    for (pos = minpos; pos <= maxpos; pos += 1) { // goes from 0 degrees to 180 degrees
+      // in steps of 1 degree
+      srv2.write(pos);              // tell servo to go to position in variable 'pos'
+      delay_and_check(del);                       // waits 15ms for the servo to reach the position
+    }
+    for (pos = maxpos; pos >= minpos; pos -= 1) { // goes from 180 degrees to 0 degrees
+      srv1.write(pos);              // tell servo to go to position in variable 'pos'
+      delay_and_check(del);                       // waits 15ms for the servo to reach the position
+    }
+    for (pos = maxpos; pos >= minpos; pos -= 1) { // goes from 180 degrees to 0 degrees
+      srv2.write(pos);              // tell servo to go to position in variable 'pos'
+      delay_and_check(del);                       // waits 15ms for the servo to reach the position
+    }
+}
+
+void mode_0_REVERSE(){ //purcell REVERSE
+  speed_control();
+  for (pos = maxpos; pos >= minpos; pos -= 1) { // goes from 180 degrees to 0 degrees
+      srv1.write(pos);              // tell servo to go to position in variable 'pos'
+      delay_and_check(del);                       // waits 15ms for the servo to reach the position
+  }
+  for (pos = maxpos; pos >= minpos; pos -= 1) { // goes from 180 degrees to 0 degrees
+      srv2.write(pos);              // tell servo to go to position in variable 'pos'
+      delay_and_check(del);                       // waits 15ms for the servo to reach the position
+  }
+  for (pos = minpos; pos <= maxpos; pos += 1) { // goes from 0 degrees to 180 degrees
+      // in steps of 1 degree
+      srv1.write(pos);              // tell servo to go to position in variable 'pos'
+      delay_and_check(del);                       // waits 15ms for the servo to reach the position
+  }
+  for (pos = minpos; pos <= maxpos; pos += 1) { // goes from 0 degrees to 180 degrees
+      // in steps of 1 degree
+      srv2.write(pos);              // tell servo to go to position in variable 'pos'
+      delay_and_check(del);                       // waits 15ms for the servo to reach the position
+  }
+}
+
+void mode_1(){ //fish
+    speed_control();
+    if(srv1.read() != idle_pos_fish){
+       for(pos = srv1.read(); pos <= idle_pos_fish; pos+=1){
+        srv1.write(pos);
+      }
+    }
+
+    for (pos = minpos; pos <= maxpos; pos += 1) { // goes from 0 degrees to 180 degrees
+      // in steps of 1 degree
+      srv2.write(pos);              // tell servo to go to position in variable 'pos'
+      delay_and_check(del/2);                       // waits 15ms for the servo to reach the position
+    }
+
+    for (pos = maxpos; pos >= minpos; pos -= 1) { // goes from 180 degrees to 0 degrees
+      srv2.write(pos);              // tell servo to go to position in variable 'pos'
+      delay_and_check(del/2);                       // waits 15ms for the servo to reach the position
+    }
+}
+
+void mode_1_REVERSE(){ //fish REVERSE
+    speed_control();
+    if(srv2.read() != idle_pos_fish){
+       for(pos = srv2.read(); pos <= idle_pos_fish; pos+=1){
+        srv2.write(pos);
+      }
+    }
+
+    for (pos = minpos; pos <= maxpos; pos += 1) { // goes from 0 degrees to 180 degrees
+      // in steps of 1 degree
+      srv1.write(pos);              // tell servo to go to position in variable 'pos'
+      delay_and_check(del/2);                       // waits 15ms for the servo to reach the position
+    }
+
+    for (pos = maxpos; pos >= minpos; pos -= 1) { // goes from 180 degrees to 0 degrees
+      srv1.write(pos);              // tell servo to go to position in variable 'pos'
+      delay_and_check(del/2);                       // waits 15ms for the servo to reach the position
+    }
+}
+
+void reset_pos(){
+  speed_control();
+  // add functionality to change state of LED
+  if(mode == 0){
+    
+    if(srv1.read() != minpos){
+      Serial.println("Resetting srv1");
+      for (pos = srv1.read(); pos >= minpos; pos -= 1){
+        srv1.write(pos);
+        delay_and_check(del);
+      }
+    }
+    if(srv2.read() != minpos){
+      Serial.println("Resetting srv2");
+      for (pos = srv2.read(); pos >= minpos; pos -= 1){
+        srv2.write(pos);
+        delay_and_check(del);
+      }
+    }
+  }
+}
+
+void zero_mode(){
+  srv1.write(90);
+  srv2.write(90);
+}
+
+void read_mode_from_switch(){
+  int val = analogRead(mode_switch_pin_purcell);
+  int other_val = analogRead(mode_switch_pin_fish);
+  int val2 = analogRead(mode_switch_purcell_reverse);
+  int val3 = analogRead(mode_switch_fish_reverse);
+  
+  if(val > 1023/2){ //high V, Purcell
+    Serial.print("Purcel Pin: ");
+    Serial.println  (mode_switch_pin_purcell);
+    Serial.println(val);
+    mode = 0;
+    return;
+  }
+
+  Serial.println(other_val);
+  if(other_val > 1023/2){ //high V, Fish
+    Serial.print("Fish Pin: ");
+    Serial.print(mode_switch_pin_fish);
+    Serial.println(other_val);
+    mode = 1;
+    return;
+  }
+
+  if(val2 > 1023/2){
+    mode = 3;
+    return;
+  }
+
+  if(val3 > 1023/2){
+    mode = 4;
+    return;
+  }
+
+  mode = 2;
+}
+
+void speed_control(){
+  int val = analogRead(mode_switch_speed_control);
+    Serial.print("Potentiometer value:");
+    Serial.println(val);
+  del = 10;
+    Serial.print("Delay: ");
+    Serial.println(del);
+}
+
+void hard_coded_control_switch(){
+  mode = 0;
+}
+
+void color_change(){ //changes color according to mode
+  digitalWrite(4, LOW);
+  digitalWrite(5, LOW);
+  digitalWrite(6, LOW);
+  switch (mode){
+  case 0: //purcell
+    digitalWrite(5, HIGH); //if in purcell turn green
+    Serial.println("Turning Green");
+    break;
+  case 1: //fish
+    digitalWrite(6, HIGH); //if in fish, turn blue
+    Serial.println("Turning Blue");
+    break;
+  case 2: //idle
+    digitalWrite(4, HIGH); //if in idle, turn red
+    Serial.println("Turning Red");
+    break;
+  case 3: //purcell
+    digitalWrite(5, HIGH); //if in purcell turn green
+    Serial.println("Turning Green");
+    break;
+  case 4: //fish
+    digitalWrite(6, HIGH); //if in fish, turn blue
+    Serial.println("Turning Blue");
+    break;
+  }
+}
+
+void delay_and_check(int val){
+  //speed_control();
+  delay(val);
+}
+
+/*void blinking(){
+  digitalWrite(LED_BUILTIN, HIGH);   // turn the LED on (HIGH is the voltage level)
+  delay(1000);                       // wait for a second
+  digitalWrite(LED_BUILTIN, LOW);    // turn the LED off by making the voltage LOW
+  delay(1000);   
+}*/
